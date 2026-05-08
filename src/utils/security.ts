@@ -39,7 +39,7 @@ export const generateLicenseKey = (businessName: string, type: LicenseType): Lic
     const hashSignature = createHash(dataString).toString(16).toUpperCase();
 
     // Formato de llave: TIPO-HASH-FECHA(opcional)
-    const key = `PP-${type === 'vitalicia' ? 'VIT' : 'MES'}-${hashSignature}${expiresAt ? '-' + expiresAt.toString(36).toUpperCase() : ''}`;
+    const key = `AM-${type === 'vitalicia' ? 'VIT' : 'MES'}-${hashSignature}${expiresAt ? '-' + expiresAt.toString(36).toUpperCase() : ''}`;
 
     return {
         key,
@@ -57,7 +57,7 @@ export const validateLicenseKey = (key: string, expectedBusinessName: string): {
         const cleanName = expectedBusinessName.trim().toUpperCase();
         const parts = key.split('-');
 
-        if (parts.length < 3 || parts[0] !== 'PP') {
+        if (parts.length < 3 || (parts[0] !== 'PP' && parts[0] !== 'AM')) {
             return { valid: false, reason: 'Formato de llave inválido.' };
         }
 

@@ -1,5 +1,5 @@
 import Dexie, { Table } from 'dexie';
-import { Vendedor, Categoria, Producto, Cliente, SesionLive, Venta, VentaDetalle } from '../types';
+import { Vendedor, Categoria, Producto, Cliente, SesionLive, Venta, VentaDetalle, SyncOperation } from '../types';
 
 export class PuntoPlataDB extends Dexie {
     vendedores!: Table<Vendedor, string>;
@@ -10,6 +10,7 @@ export class PuntoPlataDB extends Dexie {
     ventas!: Table<Venta, string>;
     venta_detalles!: Table<VentaDetalle, string>;
     config!: Table<{ key: string, value: any, updated_at: string }, string>;
+    sync_queue!: Table<SyncOperation, string>;
 
     constructor() {
         super('PuntoPlataDB');
@@ -51,6 +52,22 @@ export class PuntoPlataDB extends Dexie {
             ventas: 'id, folio, fecha, estado, cliente_id, vendedor_id',
             venta_detalles: 'id, venta_id, producto_id',
             config: 'key'
+        });
+
+        // v5: Add sync_queue and clear productos (user requested fresh start)
+        this.version(5).stores({
+            vendedores: 'id, rol, nombre',
+            categorias: 'id, nombre, orden_visual',
+            productos: 'id, codigo, nombre, categoria_id, activo, origen, marca',
+            clientes: 'id, nombre, telefono, apartados_pendientes',
+            sesiones_live: 'id, activa',
+            ventas: 'id, folio, fecha, estado, cliente_id, vendedor_id',
+            venta_detalles: 'id, venta_id, producto_id',
+            config: 'key',
+            sync_queue: 'id, operacion, estado'
+        }).upgrade(async tx => {
+            // Clear products as requested
+            await tx.table('productos').clear();
         });
     }
 }

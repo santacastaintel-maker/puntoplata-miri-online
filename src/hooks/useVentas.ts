@@ -48,11 +48,29 @@ export const useVentas = (_token?: string | null) => {
         try {
             setLoading(true);
             setError(null);
-            const result = await api.ventas.create(payload);
+            let resultId = crypto.randomUUID();
+            let resultEstado: EstadoVenta = 'completada';
+            let resultCreatedAt = new Date().toISOString();
+            let resultFolio = `FOLIO-${Date.now().toString(36).toUpperCase()}`;
+
+            if (navigator.onLine) {
+                try {
+                    const result = await api.ventas.create(payload);
+                    resultId = result.id;
+                    resultEstado = result.estado || 'completada';
+                    resultCreatedAt = result.created_at || resultCreatedAt;
+                    resultFolio = result.folio;
+                } catch (apiErr) {
+                    await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'CREAR_VENTA', payload, estado: 'pendiente', created_at: new Date().toISOString() });
+                }
+            } else {
+                await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'CREAR_VENTA', payload, estado: 'pendiente', created_at: new Date().toISOString() });
+            }
+
             // También guardar en Dexie para historial offline
             const nuevaVenta: Venta = {
-                id: result.id,
-                folio: result.folio,
+                id: resultId,
+                folio: resultFolio,
                 sesion_id: payload.sesion_id,
                 vendedor_id: payload.vendedor_id,
                 cliente_id: payload.cliente_id,
@@ -61,9 +79,9 @@ export const useVentas = (_token?: string | null) => {
                 total: payload.total,
                 monto_abonado: (payload as any).monto_abonado || payload.total,
                 metodo_pago: payload.metodo_pago,
-                estado: result.estado || 'completada',
+                estado: resultEstado,
                 notas: payload.notas || null,
-                created_at: result.created_at || new Date().toISOString(),
+                created_at: resultCreatedAt,
             };
             await db.ventas.put(nuevaVenta);
             return nuevaVenta;
@@ -79,7 +97,15 @@ export const useVentas = (_token?: string | null) => {
         try {
             setLoading(true);
             setError(null);
-            await api.ventas.cancelar(ventaId);
+            if (navigator.onLine) {
+                try {
+                    await api.ventas.cancelar(ventaId);
+                } catch (apiErr) {
+                    await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'CANCELAR_VENTA', payload: { id: ventaId }, estado: 'pendiente', created_at: new Date().toISOString() });
+                }
+            } else {
+                await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'CANCELAR_VENTA', payload: { id: ventaId }, estado: 'pendiente', created_at: new Date().toISOString() });
+            }
             await db.ventas.update(ventaId, { estado: 'cancelada' });
             setVentas(prev => prev.map(v => v.id === ventaId ? { ...v, estado: 'cancelada' } : v));
             return { id: ventaId };

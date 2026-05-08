@@ -11,6 +11,7 @@ import { ClientesPage } from './pages/ClientesPage';
 import { TutorialPage } from './pages/TutorialPage';
 import { FeaturesPage } from './pages/FeaturesPage';
 import { LicenseGuard } from './components/auth/LicenseGuard';
+import { useSyncManager } from './hooks/useSyncManager';
 
 // Rutas de Administrador
 const AdminRoute = ({ children }: { children: React.ReactNode }) => {
@@ -26,6 +27,8 @@ const AdminRoute = ({ children }: { children: React.ReactNode }) => {
 };
 
 function App() {
+    useSyncManager();
+
     return (
         <LicenseGuard>
             <Routes>

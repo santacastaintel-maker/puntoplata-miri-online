@@ -46,7 +46,7 @@ export const CatalogoPage = () => {
                     </div>
                     <div className="flex items-center gap-2">
                         <button
-                            onClick={() => generateCatalogPDF(productos, 'Miri Montero Joyería')}
+                            onClick={() => generateCatalogPDF(productos, 'Andrés Montero Joyería')}
                             className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl transition-colors text-sm"
                             title="Descargar Catálogo PDF"
                         >

@@ -132,3 +132,13 @@ export interface AppConfig {
     value: any;
     updated_at: string;
 }
+
+export interface SyncOperation {
+    id: string;
+    operacion: 'CREAR_PRODUCTO' | 'ACTUALIZAR_PRODUCTO' | 'ELIMINAR_PRODUCTO' | 'CREAR_VENTA' | 'CANCELAR_VENTA' | 'SUBIR_IMAGEN';
+    payload: any;
+    estado: 'pendiente' | 'procesando' | 'error';
+    error?: string;
+    created_at: string;
+}
+

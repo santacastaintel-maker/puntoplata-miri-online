@@ -2,6 +2,8 @@ import React, { useState, useRef, useCallback } from 'react';
 import { X, Upload, FolderOpen, Check, Edit3, Trash2, Loader2, FileImage } from 'lucide-react';
 import { resizeImage } from '../../utils/mediaUtils';
 import { db } from '../../lib/db';
+import { api } from '../../lib/apiClient';
+import { Producto } from '../../types';
 
 interface PendingPhoto {
     id: string;
@@ -52,7 +54,7 @@ export const BulkPhotoUploader: React.FC<Props> = ({ open, onClose, categorias, 
     // ── Generate SKU ──
     const generateSKU = async (prefix: string, index: number): Promise<string> => {
         const cleanPrefix = prefix.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6);
-        return `${cleanPrefix || 'PP'}-${String(index).padStart(3, '0')}`;
+        return `${cleanPrefix || 'AM'}-${String(index).padStart(3, '0')}`;
     };
 
     // ── Process files into PendingPhoto list ──
@@ -167,8 +169,7 @@ export const BulkPhotoUploader: React.FC<Props> = ({ open, onClose, categorias, 
                     });
                 }
 
-                // Create product in DB
-                await db.productos.add({
+                const nuevoProd: Producto = {
                     id: crypto.randomUUID(),
                     codigo: photo.codigo,
                     nombre: photo.nombre,
@@ -176,11 +177,31 @@ export const BulkPhotoUploader: React.FC<Props> = ({ open, onClose, categorias, 
                     categoria_id: photo.categoria_id || null,
                     precio: photo.precio,
                     stock: photo.stock,
-                    foto_url: base64,
+                    foto_url: base64, // local will display this
                     palabras_clave: null,
                     activo: true,
                     marca: photo.marca || null,
-                });
+                    origen: 'app'
+                };
+
+                // Add to Dexie cache
+                await db.productos.add(nuevoProd);
+
+                // Add to Sync Queue or upload immediately
+                if (navigator.onLine) {
+                    try {
+                        const file = await resizeImage(photo.file, 400, 400, 0.8);
+                        const key = await api.photos.upload(file);
+                        nuevoProd.foto_url = key;
+                        nuevoProd.foto_key = key;
+                        await db.productos.update(nuevoProd.id, { foto_url: key, foto_key: key });
+                        await api.productos.create(nuevoProd);
+                    } catch {
+                        await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'CREAR_PRODUCTO', payload: nuevoProd, estado: 'pendiente', created_at: new Date().toISOString() });
+                    }
+                } else {
+                    await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'CREAR_PRODUCTO', payload: nuevoProd, estado: 'pendiente', created_at: new Date().toISOString() });
+                }
 
                 setSavedCount(i + 1);
             }

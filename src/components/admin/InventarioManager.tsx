@@ -127,7 +127,7 @@ export const InventarioManager = () => {
 
     const handleOpenNew = () => {
         setEditingId(null);
-        setForm({ ...EMPTY_FORM, codigo: `PP-${Date.now().toString(36).toUpperCase()}` });
+        setForm({ ...EMPTY_FORM, codigo: `AM-${Date.now().toString(36).toUpperCase()}` });
         setFormError('');
         setShowForm(true);
     };
@@ -255,7 +255,7 @@ export const InventarioManager = () => {
                                 return null;
                             };
 
-                            const codigo = (findVal(['Codigo', 'codigo', 'SKU', 'sku', 'ID', 'id', 'Ref', 'ref']) || `PP-EX-${Date.now().toString(36)}-${importCount}`).toString();
+                            const codigo = (findVal(['Codigo', 'codigo', 'SKU', 'sku', 'ID', 'id', 'Ref', 'ref']) || `AM-EX-${Date.now().toString(36)}-${importCount}`).toString();
                             const nombre = (findVal(['Nombre', 'nombre', 'Producto', 'producto', 'Articulo', 'articulo']) || 'Producto sin nombre').toString();
                             const precioVal = findVal(['Precio', 'precio', 'Costo', 'costo', 'Valor', 'valor', 'Importe', 'importe']);
                             const stockVal = findVal(['Stock', 'stock', 'Existencia', 'existencia', 'Cantidad', 'cantidad', 'Cant', 'cant', 'Piezas', 'piezas', 'Pzas', 'pzas', 'Qty', 'qty']);
@@ -361,6 +361,31 @@ export const InventarioManager = () => {
         });
 
         doc.save(`Etiquetas_Joyeria_${Date.now()}.pdf`);
+    };
+
+    const handleExportBarTender = () => {
+        const selectedProducts = productos.filter(p => selectedForLabels.includes(p.id));
+        if (selectedProducts.length === 0) return;
+
+        const data: any[] = [];
+        selectedProducts.forEach(p => {
+            const copies = labelQuantities[p.id] || 1;
+            for (let i = 0; i < copies; i++) {
+                data.push({
+                    Codigo: p.codigo,
+                    Nombre: p.nombre,
+                    Precio: p.precio,
+                    Marca: p.marca || ''
+                });
+            }
+        });
+
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Etiquetas");
+        
+        // El nombre fijo solicitado:
+        XLSX.writeFile(wb, "mirietiquetas.xlsx");
     };
 
     return (
@@ -579,7 +604,7 @@ export const InventarioManager = () => {
                                     value={form.codigo}
                                     onChange={e => setForm({ ...form, codigo: e.target.value })}
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#80854b] outline-none text-sm font-mono"
-                                    placeholder="PP-001"
+                                    placeholder="AM-001"
                                 />
                             </div>
 
@@ -871,13 +896,22 @@ export const InventarioManager = () => {
                                 Limpiar Selección
                             </button>
                             {printMode === 'rollo' ? (
-                                <button
-                                    onClick={handleDownloadRolloPDF}
-                                    className="flex-1 py-3 bg-olivo-600 hover:bg-olivo-700 text-white font-bold rounded-xl transition-colors text-sm flex items-center justify-center gap-2 shadow-lg"
-                                >
-                                    <FileSpreadsheet className="w-5 h-5" />
-                                    Descargar PDF para Rollo (60x11mm)
-                                </button>
+                                <div className="flex-1 flex gap-2">
+                                    <button
+                                        onClick={handleExportBarTender}
+                                        className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl transition-colors text-sm flex items-center justify-center gap-2 shadow-lg"
+                                    >
+                                        <FileSpreadsheet className="w-5 h-5" />
+                                        Excel para BarTender
+                                    </button>
+                                    <button
+                                        onClick={handleDownloadRolloPDF}
+                                        className="flex-1 py-3 bg-olivo-600 hover:bg-olivo-700 text-white font-bold rounded-xl transition-colors text-sm flex items-center justify-center gap-2 shadow-lg"
+                                    >
+                                        <FileSpreadsheet className="w-5 h-5" />
+                                        PDF Rollo (60x11mm)
+                                    </button>
+                                </div>
                             ) : (
                                 <button
                                     onClick={() => window.print()}

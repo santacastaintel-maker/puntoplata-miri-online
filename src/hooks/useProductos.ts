@@ -76,8 +76,17 @@ export const useProductos = () => {
     const crearProducto = useCallback(async (producto: Producto) => {
         try {
             setLoading(true);
-            await api.productos.create(producto);
-            await db.productos.put(producto); // también en caché local
+            if (navigator.onLine) {
+                try {
+                    await api.productos.create(producto);
+                } catch (apiErr) {
+                    // Si falla, encolar
+                    await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'CREAR_PRODUCTO', payload: producto, estado: 'pendiente', created_at: new Date().toISOString() });
+                }
+            } else {
+                await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'CREAR_PRODUCTO', payload: producto, estado: 'pendiente', created_at: new Date().toISOString() });
+            }
+            await db.productos.put(producto); // siempre en caché local
             return { success: true };
         } catch (err: any) {
             return { success: false, error: err.message };
@@ -89,7 +98,15 @@ export const useProductos = () => {
     const actualizarProducto = useCallback(async (id: string, cambios: Partial<Producto>) => {
         try {
             setLoading(true);
-            await api.productos.update(id, cambios);
+            if (navigator.onLine) {
+                try {
+                    await api.productos.update(id, cambios);
+                } catch (apiErr) {
+                    await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'ACTUALIZAR_PRODUCTO', payload: { id, cambios }, estado: 'pendiente', created_at: new Date().toISOString() });
+                }
+            } else {
+                await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'ACTUALIZAR_PRODUCTO', payload: { id, cambios }, estado: 'pendiente', created_at: new Date().toISOString() });
+            }
             await db.productos.update(id, cambios);
             return { success: true };
         } catch (err: any) {
@@ -102,7 +119,15 @@ export const useProductos = () => {
     const eliminarProducto = useCallback(async (id: string) => {
         try {
             setLoading(true);
-            await api.productos.delete(id);
+            if (navigator.onLine) {
+                try {
+                    await api.productos.delete(id);
+                } catch (apiErr) {
+                    await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'ELIMINAR_PRODUCTO', payload: { id }, estado: 'pendiente', created_at: new Date().toISOString() });
+                }
+            } else {
+                await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'ELIMINAR_PRODUCTO', payload: { id }, estado: 'pendiente', created_at: new Date().toISOString() });
+            }
             await db.productos.update(id, { activo: false });
             return { success: true };
         } catch (err: any) {

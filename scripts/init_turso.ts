@@ -1,7 +1,10 @@
-// POST /api/schema — inicializa todas las tablas en Turso (correr UNA sola vez)
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { turso } from './_turso';
-import { handleCors, sendError } from './_helpers';
+import { createClient } from '@libsql/client/http';
+import fs from 'fs';
+
+const turso = createClient({
+    url: process.env.TURSO_DATABASE_URL as string,
+    authToken: process.env.TURSO_AUTH_TOKEN as string,
+});
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS vendedores (
@@ -91,51 +94,23 @@ CREATE TABLE IF NOT EXISTS config (
     value TEXT,
     updated_at TEXT DEFAULT (datetime('now'))
 );
-
--- Datos iniciales de configuración
-INSERT OR IGNORE INTO config (key, value) VALUES
-    ('max_descuento', '15'),
-    ('banco_nombre', 'BANAMEX'),
-    ('clabe_cuenta', ''),
-    ('titular_cuenta', 'Andrés Montero');
-
--- Categorías por defecto
-INSERT OR IGNORE INTO categorias (id, nombre, descripcion, orden_visual) VALUES
-    ('cat-1', 'Anillos', NULL, 1),
-    ('cat-2', 'Collares', NULL, 2),
-    ('cat-3', 'Pulseras', NULL, 3),
-    ('cat-4', 'Aretes', NULL, 4),
-    ('cat-5', 'Sets', NULL, 5),
-    ('cat-6', 'Charms', NULL, 6),
-    ('cat-7', 'Esclavas', NULL, 7),
-    ('cat-8', 'Cadenas', NULL, 8),
-    ('cat-9', 'Dijes', NULL, 9),
-    ('cat-10', 'Gargantillas', NULL, 10);
-
--- Vendedor admin por defecto
-INSERT OR IGNORE INTO vendedores (id, nombre, email, color_identificador, rol, activo, pin_auth) VALUES
-    ('admin-id-123', 'Dueño', NULL, '#80854b', 'admin', 1, '9999'),
-    ('vendedor-id-456', 'Vendedor Estándar', NULL, '#3B82F6', 'vendedor', 1, NULL);
 `;
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-    if (handleCors(req, res)) return;
-    if (req.method !== 'POST') return sendError(res, 405, 'Method not allowed');
+async function initDB() {
+    console.log('Inicializando tablas...');
+    const statements = SCHEMA_SQL
+        .split(';')
+        .map(s => s.trim())
+        .filter(s => s.length > 0 && !s.startsWith('--'));
 
-    try {
-        // Ejecutar cada sentencia por separado (Turso no acepta múltiples statements en batch simple)
-        const statements = SCHEMA_SQL
-            .split(';')
-            .map(s => s.trim())
-            .filter(s => s.length > 0 && !s.startsWith('--'));
-
-        for (const sql of statements) {
-            await turso.execute(sql);
-        }
-
-        res.json({ success: true, message: 'Esquema de base de datos inicializado correctamente.' });
-    } catch (err: any) {
-        console.error('Schema error:', err);
-        sendError(res, 500, err.message || 'Error inicializando esquema');
+    for (const sql of statements) {
+        await turso.execute(sql);
     }
+    
+    // Clear products
+    await turso.execute('DELETE FROM productos;');
+    
+    console.log('Tablas inicializadas en Turso.');
 }
+
+initDB().catch(console.error);

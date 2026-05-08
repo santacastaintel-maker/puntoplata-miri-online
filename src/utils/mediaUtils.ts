@@ -11,6 +11,18 @@ import { Producto } from '../types';
  * @param quality Calidad JPEG (0.0 a 1.0)
  * @returns Promesa que resuelve a un nuevo File optimizado
  */
+export const base64ToFile = (base64: string, filename: string): File => {
+    const arr = base64.split(',');
+    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+};
+
 export const resizeImage = (
     file: File,
     maxWidth: number = 800,
@@ -89,7 +101,7 @@ export const resizeImage = (
  * @param productos Array de productos a incluir en el PDF
  * @param businessName Nombre del negocio para el encabezado
  */
-export const generateCatalogPDF = (productos: Producto[], businessName: string = 'Miri Montero Joyería') => {
+export const generateCatalogPDF = (productos: Producto[], businessName: string = 'Andrés Montero Joyería') => {
     // Configuración inicial del documento
     const doc = new jsPDF({
         orientation: 'portrait',
@@ -192,7 +204,7 @@ export const generateCatalogPDF = (productos: Producto[], businessName: string =
         doc.setFontSize(8);
         (doc as any).setTextColor(148, 163, 184); // Slate 400
         doc.text(
-            `Página ${i} de ${pageCount} - Miri Montero Joyería System`,
+            `Página ${i} de ${pageCount} - Andrés Montero Joyería System`,
             doc.internal.pageSize.width / 2,
             doc.internal.pageSize.height - 10,
             { align: 'center' }

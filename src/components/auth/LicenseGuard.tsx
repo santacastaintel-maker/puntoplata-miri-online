@@ -117,7 +117,7 @@ export const LicenseGuard = ({ children }: LicenseGuardProps) => {
 
                         <h1 className="text-2xl font-bold text-slate-900 text-center">Activación Requerida</h1>
                         <p className="text-slate-500 text-center mt-2 mb-8">
-                            Miri Montero Joyería requiere una licencia válida para funcionar en este dispositivo.
+                            Andrés Montero Joyería requiere una licencia válida para funcionar en este dispositivo.
                         </p>
 
                         <form onSubmit={handleActivate} className="w-full space-y-5">
@@ -157,7 +157,7 @@ export const LicenseGuard = ({ children }: LicenseGuardProps) => {
                                     autoCapitalize="characters"
                                     value={licenseKey}
                                     onChange={(e) => setLicenseKey(e.target.value)}
-                                    placeholder="PP-MES-XXXX..."
+                                    placeholder="AM-MES-XXXX..."
                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-olivo-500 focus:border-olivo-500 outline-none font-mono text-sm transition-all"
                                     required
                                 />
