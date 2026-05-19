@@ -110,7 +110,7 @@ export interface PDFCatalogOptions {
  */
 export const generateCatalogPDF = (
     productos: Producto[], 
-    businessName: string = 'Miri Montero Joyería',
+    businessName: string = 'Andrés Montero Joyería',
     options: PDFCatalogOptions = { includeImages: true, hidePrices: false }
 ) => {
     const { includeImages = true, hidePrices = false, batchInfo } = options;
@@ -255,7 +255,7 @@ export const generateCatalogPDF = (
         doc.setFontSize(8);
         (doc as any).setTextColor(148, 163, 184); // Slate 400
         doc.text(
-            `Página ${i} de ${pageCount} - Miri Montero Joyería System`,
+            `Página ${i} de ${pageCount} - Andrés Montero Joyería System`,
             doc.internal.pageSize.width / 2,
             doc.internal.pageSize.height - 10,
             { align: 'center' }

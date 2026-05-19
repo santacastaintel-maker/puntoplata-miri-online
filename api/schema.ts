@@ -98,7 +98,7 @@ INSERT OR IGNORE INTO config (key, value) VALUES
     ('max_descuento', '15'),
     ('banco_nombre', 'BANAMEX'),
     ('clabe_cuenta', ''),
-    ('titular_cuenta', 'Miri Montero');
+    ('titular_cuenta', 'Andrés Montero');
 
 -- Categorías por defecto
 INSERT OR IGNORE INTO categorias (id, nombre, descripcion, orden_visual) VALUES
