@@ -1,5 +1,7 @@
+import { generateId } from '../../utils/idUtils';
 import { useState, useEffect } from 'react';
 import { db } from '../../lib/db';
+import { api } from '../../lib/apiClient';
 import { Vendedor } from '../../types';
 import { Plus, Edit3, Save, X, ShieldAlert } from 'lucide-react';
 
@@ -66,6 +68,11 @@ export const VendedoresManager = () => {
         if (!confirm(confirmMsg)) return;
         
         await db.vendedores.update(v.id, { activo: !v.activo });
+        try {
+            await api.vendedores.update(v.id, { activo: !v.activo });
+        } catch (e) {
+            console.error('Error syncing vendedor activo', e);
+        }
         fetchVendedores();
     };
 
@@ -97,20 +104,32 @@ export const VendedoresManager = () => {
                     updates.pin_auth = form.pin;
                 }
                 await db.vendedores.update(editingId, updates);
+                try {
+                    await api.vendedores.update(editingId, updates);
+                } catch (e) {
+                    console.error('Error syncing vendedor', e);
+                }
             } else {
                 if (!form.pin) {
                     setFormError('Debes asignar un NIP a la vendedora.');
                     return;
                 }
-                await db.vendedores.add({
-                    id: crypto.randomUUID(),
+                const newId = generateId();
+                const nuevo = {
+                    id: newId,
                     nombre: form.nombre,
                     email: null,
                     color_identificador: form.color,
-                    rol: 'vendedor',
+                    rol: 'vendedor' as const,
                     activo: true,
                     pin_auth: form.pin
-                });
+                };
+                await db.vendedores.add(nuevo);
+                try {
+                    await api.vendedores.create(nuevo);
+                } catch (e) {
+                    console.error('Error creating vendedor', e);
+                }
             }
             setShowForm(false);
             fetchVendedores();

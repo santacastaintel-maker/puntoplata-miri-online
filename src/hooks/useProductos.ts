@@ -1,3 +1,4 @@
+import { generateId } from '../utils/idUtils';
 import { useState, useCallback } from 'react';
 import { api } from '../lib/apiClient';
 import { db } from '../lib/db'; // Dexie como fallback offline
@@ -81,10 +82,10 @@ export const useProductos = () => {
                     await api.productos.create(producto);
                 } catch (apiErr) {
                     // Si falla, encolar
-                    await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'CREAR_PRODUCTO', payload: producto, estado: 'pendiente', created_at: new Date().toISOString() });
+                    await db.sync_queue.add({ id: generateId(), operacion: 'CREAR_PRODUCTO', payload: producto, estado: 'pendiente', created_at: new Date().toISOString() });
                 }
             } else {
-                await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'CREAR_PRODUCTO', payload: producto, estado: 'pendiente', created_at: new Date().toISOString() });
+                await db.sync_queue.add({ id: generateId(), operacion: 'CREAR_PRODUCTO', payload: producto, estado: 'pendiente', created_at: new Date().toISOString() });
             }
             await db.productos.put(producto); // siempre en caché local
             return { success: true };
@@ -102,10 +103,10 @@ export const useProductos = () => {
                 try {
                     await api.productos.update(id, cambios);
                 } catch (apiErr) {
-                    await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'ACTUALIZAR_PRODUCTO', payload: { id, cambios }, estado: 'pendiente', created_at: new Date().toISOString() });
+                    await db.sync_queue.add({ id: generateId(), operacion: 'ACTUALIZAR_PRODUCTO', payload: { id, cambios }, estado: 'pendiente', created_at: new Date().toISOString() });
                 }
             } else {
-                await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'ACTUALIZAR_PRODUCTO', payload: { id, cambios }, estado: 'pendiente', created_at: new Date().toISOString() });
+                await db.sync_queue.add({ id: generateId(), operacion: 'ACTUALIZAR_PRODUCTO', payload: { id, cambios }, estado: 'pendiente', created_at: new Date().toISOString() });
             }
             await db.productos.update(id, cambios);
             return { success: true };
@@ -123,10 +124,10 @@ export const useProductos = () => {
                 try {
                     await api.productos.delete(id);
                 } catch (apiErr) {
-                    await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'ELIMINAR_PRODUCTO', payload: { id }, estado: 'pendiente', created_at: new Date().toISOString() });
+                    await db.sync_queue.add({ id: generateId(), operacion: 'ELIMINAR_PRODUCTO', payload: { id }, estado: 'pendiente', created_at: new Date().toISOString() });
                 }
             } else {
-                await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'ELIMINAR_PRODUCTO', payload: { id }, estado: 'pendiente', created_at: new Date().toISOString() });
+                await db.sync_queue.add({ id: generateId(), operacion: 'ELIMINAR_PRODUCTO', payload: { id }, estado: 'pendiente', created_at: new Date().toISOString() });
             }
             await db.productos.update(id, { activo: false });
             return { success: true };

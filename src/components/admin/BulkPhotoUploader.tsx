@@ -1,3 +1,4 @@
+import { generateId } from '../../utils/idUtils';
 import React, { useState, useRef, useCallback } from 'react';
 import { X, Upload, FolderOpen, Check, Edit3, Trash2, Loader2, FileImage } from 'lucide-react';
 import { resizeImage } from '../../utils/mediaUtils';
@@ -80,7 +81,7 @@ export const BulkPhotoUploader: React.FC<Props> = ({ open, onClose, categorias, 
                 : nombre;
 
             newPhotos.push({
-                id: crypto.randomUUID(),
+                id: generateId(),
                 file,
                 previewUrl,
                 nombre: displayName,
@@ -170,7 +171,7 @@ export const BulkPhotoUploader: React.FC<Props> = ({ open, onClose, categorias, 
                 }
 
                 const nuevoProd: Producto = {
-                    id: crypto.randomUUID(),
+                    id: generateId(),
                     codigo: photo.codigo,
                     nombre: photo.nombre,
                     descripcion: null,
@@ -197,10 +198,10 @@ export const BulkPhotoUploader: React.FC<Props> = ({ open, onClose, categorias, 
                         await db.productos.update(nuevoProd.id, { foto_url: key, foto_key: key });
                         await api.productos.create(nuevoProd);
                     } catch {
-                        await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'CREAR_PRODUCTO', payload: nuevoProd, estado: 'pendiente', created_at: new Date().toISOString() });
+                        await db.sync_queue.add({ id: generateId(), operacion: 'CREAR_PRODUCTO', payload: nuevoProd, estado: 'pendiente', created_at: new Date().toISOString() });
                     }
                 } else {
-                    await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'CREAR_PRODUCTO', payload: nuevoProd, estado: 'pendiente', created_at: new Date().toISOString() });
+                    await db.sync_queue.add({ id: generateId(), operacion: 'CREAR_PRODUCTO', payload: nuevoProd, estado: 'pendiente', created_at: new Date().toISOString() });
                 }
 
                 setSavedCount(i + 1);

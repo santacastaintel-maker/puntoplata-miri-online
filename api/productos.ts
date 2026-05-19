@@ -48,15 +48,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // ── POST ─────────────────────────────────────────────────────────────
         if (req.method === 'POST') {
             const b = req.body;
-            const { id, codigo, nombre, descripcion, categoria_id, precio, stock, foto_key, palabras_clave, activo, origen, marca } = b;
+            const { id, codigo, nombre, descripcion, categoria_id, precio, stock, foto_key, palabras_clave, activo, origen, marca, talla } = b;
             if (!id || !codigo || !nombre) return sendError(res, 400, 'id, codigo y nombre son requeridos');
 
             await turso.execute({
-                sql: `INSERT INTO productos (id,codigo,nombre,descripcion,categoria_id,precio,stock,foto_key,palabras_clave,activo,origen,marca)
-                      VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
+                sql: `INSERT INTO productos (id,codigo,nombre,descripcion,categoria_id,precio,stock,foto_key,palabras_clave,activo,origen,marca,talla)
+                      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
                 args: [id, codigo, nombre, descripcion || null, categoria_id || null, precio || 0, stock || 0,
                        foto_key || null, palabras_clave ? JSON.stringify(palabras_clave) : null,
-                       activo !== false ? 1 : 0, origen || 'app', marca || null]
+                       activo !== false ? 1 : 0, origen || 'app', marca || null, talla || null]
             });
             return res.status(201).json({ success: true, id });
         }
@@ -69,7 +69,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
             const fields: string[] = [];
             const args: any[] = [];
-            const allowed = ['codigo','nombre','descripcion','categoria_id','precio','stock','foto_key','activo','marca','origen'];
+            const allowed = ['codigo','nombre','descripcion','categoria_id','precio','stock','foto_key','activo','marca','origen','talla'];
             for (const key of allowed) {
                 if (key in b) {
                     fields.push(`${key} = ?`);
@@ -112,6 +112,7 @@ function formatProducto(row: any) {
         activo: row.activo === 1,
         origen: row.origen,
         marca: row.marca,
+        talla: row.talla,
         categorias: row.cat_nombre ? {
             id: row.categoria_id,
             nombre: row.cat_nombre,

@@ -96,12 +96,25 @@ export const resizeImage = (
     });
 };
 
+export interface PDFCatalogOptions {
+    includeImages?: boolean;
+    hidePrices?: boolean;
+    batchInfo?: { current: number; total: number };
+}
+
 /**
  * Genera un catálogo PDF con los productos dados.
  * @param productos Array de productos a incluir en el PDF
  * @param businessName Nombre del negocio para el encabezado
+ * @param options Opciones avanzadas de formato
  */
-export const generateCatalogPDF = (productos: Producto[], businessName: string = 'Andrés Montero Joyería') => {
+export const generateCatalogPDF = (
+    productos: Producto[], 
+    businessName: string = 'Miri Montero Joyería',
+    options: PDFCatalogOptions = { includeImages: true, hidePrices: false }
+) => {
+    const { includeImages = true, hidePrices = false, batchInfo } = options;
+
     // Configuración inicial del documento
     const doc = new jsPDF({
         orientation: 'portrait',
@@ -123,7 +136,12 @@ export const generateCatalogPDF = (productos: Producto[], businessName: string =
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(12);
     (doc as any).setTextColor(textColor[0], textColor[1], textColor[2]);
-    doc.text(`Catálogo de Productos - Generado el ${new Date().toLocaleDateString()}`, 14, 28);
+    
+    let subtitle = `Catálogo de Productos - Generado el ${new Date().toLocaleDateString()}`;
+    if (batchInfo) {
+        subtitle += ` (Parte ${batchInfo.current} de ${batchInfo.total})`;
+    }
+    doc.text(subtitle, 14, 28);
 
     doc.setDrawColor(226, 232, 240); // Slate 200
     doc.line(14, 32, 196, 32);
@@ -132,22 +150,48 @@ export const generateCatalogPDF = (productos: Producto[], businessName: string =
     if (productos.length === 0) {
         doc.setFontSize(14);
         doc.text('No hay productos disponibles para mostrar en el catálogo.', 14, 45);
-        doc.save(`Catalogo_${businessName.replace(/\s+/g, '_')}.pdf`);
+        let fn = `Catalogo_${businessName.replace(/\s+/g, '_')}`;
+        if (batchInfo) fn += `_${String(batchInfo.current).padStart(2, '0')}_de_${String(batchInfo.total).padStart(2, '0')}`;
+        doc.save(`${fn}.pdf`);
         return;
     }
 
-    // Preparar filas para la tabla (dejamos un espacio vacío para la imagen)
-    const tableData = productos.map(p => [
-        '', // Espacio para la imagen
-        p.codigo || 'N/A',
-        p.nombre,
-        p.categorias?.nombre || 'General',
-        `$${p.precio.toFixed(2)}`
-    ]);
+    const headRow: string[] = ['SKU', 'Producto', 'Categoría'];
+    if (includeImages) headRow.unshift('Foto');
+    if (!hidePrices) headRow.push('Precio');
+
+    const tableData = productos.map(p => {
+        const row: any[] = [
+            p.codigo || 'N/A',
+            p.nombre,
+            p.categorias?.nombre || 'General'
+        ];
+        if (includeImages) row.unshift(''); // Espacio para la imagen
+        if (!hidePrices) row.push(`$${p.precio.toFixed(2)}`);
+        return row;
+    });
+
+    const columnStyles: any = {};
+    let colIdx = 0;
+    
+    if (includeImages) {
+        columnStyles[colIdx] = { cellWidth: 30, halign: 'center' };
+        colIdx++;
+    }
+    columnStyles[colIdx] = { cellWidth: 20 }; // SKU
+    colIdx++;
+    // Producto (Auto)
+    colIdx++;
+    columnStyles[colIdx] = { cellWidth: 35 }; // Categoria
+    colIdx++;
+    
+    if (!hidePrices) {
+        columnStyles[colIdx] = { halign: 'right', fontStyle: 'bold', textColor: [16, 185, 129] };
+    }
 
     autoTable(doc, {
         startY: 38,
-        head: [['Foto', 'SKU', 'Producto', 'Categoría', 'Precio']],
+        head: [headRow],
         body: tableData,
         theme: 'grid', // Grid mode is better for catalogs
         headStyles: {
@@ -157,24 +201,20 @@ export const generateCatalogPDF = (productos: Producto[], businessName: string =
             halign: 'center'
         },
         bodyStyles: {
-            minCellHeight: 30, // Altura mínima para que quepa la imagen
+            minCellHeight: includeImages ? 30 : 10,
             valign: 'middle'
         },
-        columnStyles: {
-            0: { cellWidth: 30, halign: 'center' }, // Columna Foto
-            1: { cellWidth: 20 },
-            4: { halign: 'right', fontStyle: 'bold', textColor: [16, 185, 129] }
-        },
+        columnStyles: columnStyles,
         styles: {
             font: 'helvetica',
             fontSize: 10,
             textColor: [51, 65, 85]
         },
         didDrawCell: (data) => {
-            // Renderizar la imagen si estamos en el body de la columna 0 (Foto)
-            if (data.row.section === 'body' && data.column.index === 0) {
+            // Renderizar la imagen si estamos en el body de la columna 0 y las imágenes están habilitadas
+            if (includeImages && data.row.section === 'body' && data.column.index === 0) {
                 const prod = productos[data.row.index];
-                if (prod.foto_url) {
+                if (prod.foto_url && prod.foto_url.startsWith('data:image')) {
                     try {
                         const dim = 24; // Dimensiones de la imagen en mm
                         // Calcular centro de la celda
@@ -197,6 +237,17 @@ export const generateCatalogPDF = (productos: Producto[], businessName: string =
         }
     });
 
+    // --- RESUMEN FINAL ---
+    const lastY = (doc as any).lastAutoTable.finalY || 40;
+    if (lastY + 30 > doc.internal.pageSize.height) {
+        doc.addPage();
+    }
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text(`Resumen del Catálogo:`, 14, (doc as any).lastAutoTable.finalY + 15);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Total de piezas mostradas: ${productos.length}`, 14, (doc as any).lastAutoTable.finalY + 22);
+
     // --- PIE DE PÁGINA ---
     const pageCount = (doc.internal as any).getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
@@ -204,13 +255,21 @@ export const generateCatalogPDF = (productos: Producto[], businessName: string =
         doc.setFontSize(8);
         (doc as any).setTextColor(148, 163, 184); // Slate 400
         doc.text(
-            `Página ${i} de ${pageCount} - Andrés Montero Joyería System`,
+            `Página ${i} de ${pageCount} - Miri Montero Joyería System`,
             doc.internal.pageSize.width / 2,
             doc.internal.pageSize.height - 10,
             { align: 'center' }
         );
     }
 
-    // Guardar el PDF
-    doc.save(`Catalogo_${businessName.replace(/\s+/g, '_')}.pdf`);
+    // Guardar el PDF con nomenclatura numérica
+    let fileName = `Catalogo_${businessName.replace(/\s+/g, '_')}`;
+    if (batchInfo) {
+        const currentStr = String(batchInfo.current).padStart(2, '0');
+        const totalStr = String(batchInfo.total).padStart(2, '0');
+        fileName += `_${currentStr}_de_${totalStr}`;
+    }
+    fileName += '.pdf';
+
+    doc.save(fileName);
 };

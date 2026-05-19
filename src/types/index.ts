@@ -29,6 +29,7 @@ export interface Producto {
     activo: boolean;
     origen?: 'excel' | 'app';
     marca?: string | null;       // Campo Marca añadido
+    talla?: string | null;       // Campo Talla añadido para anillos y pulseras
     categorias?: Categoria;      // Relacionado
 }
 

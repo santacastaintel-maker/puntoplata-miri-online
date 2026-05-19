@@ -7,7 +7,7 @@ export const TutorialPage = () => {
             <div className="mb-10">
                 <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
                     <BookOpen className="w-8 h-8 text-olivo-500" />
-                    Tutorial: Gestión de Andrés Montero Joyería
+                    Tutorial: Gestión de Miri Montero Joyería
                 </h1>
                 <p className="text-slate-500 mt-2 text-lg">
                     Guía completa para instalar la app a tus clientes, generar sus llaves y realizar cobros seguros.

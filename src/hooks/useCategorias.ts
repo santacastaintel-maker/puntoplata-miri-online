@@ -1,3 +1,4 @@
+import { generateId } from '../utils/idUtils';
 import { useState, useCallback, useEffect } from 'react';
 import { api } from '../lib/apiClient';
 import { db } from '../lib/db';
@@ -33,7 +34,7 @@ export const useCategorias = () => {
     const crearCategoria = useCallback(async (categoria: Omit<Categoria, 'id'>) => {
         try {
             setLoading(true);
-            const newId = crypto.randomUUID();
+            const newId = generateId();
             const newCat = { ...categoria, id: newId };
             await api.categorias.create(newCat);
             await db.categorias.add(newCat);

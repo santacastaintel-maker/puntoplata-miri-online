@@ -194,7 +194,7 @@ export const AdminPage = () => {
             {/* Header del Admin */}
             <div className="bg-white border-b border-slate-200 px-6 py-4 laurel-bg">
                 <h1 className="text-2xl font-bold text-slate-800">Panel de Administración</h1>
-                <p className="text-slate-500 text-sm mt-1">Andrés Montero Joyería - Gestión Central</p>
+                <p className="text-slate-500 text-sm mt-1">Miri Montero Joyería - Gestión Central</p>
 
                 {/* Tabs */}
                 <div className="flex gap-6 mt-6 border-b border-slate-100 overflow-x-auto hide-scrollbar pb-1">
@@ -364,7 +364,7 @@ export const AdminPage = () => {
                                 <div className="mt-6 pt-6 border-t border-olivo-200/50">
                                     <p className="text-sm text-olivo-800">
                                         📲 <strong>Instrucción para el cliente:</strong><br />
-                                        "Abre la aplicación Andrés Montero Joyería en tu dispositivo, ingresa exactamente como nombre del negocio <span className="font-bold underline">{businessName.trim().toUpperCase()}</span> y pega esta llave de activación."
+                                        "Abre la aplicación Miri Montero Joyería en tu dispositivo, ingresa exactamente como nombre del negocio <span className="font-bold underline">{businessName.trim().toUpperCase()}</span> y pega esta llave de activación."
                                     </p>
                                 </div>
                             </div>

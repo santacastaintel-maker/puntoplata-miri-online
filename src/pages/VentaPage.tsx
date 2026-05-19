@@ -189,9 +189,13 @@ export const VentaPage = () => {
                                 placeholder="Escanear producto..."
                                 className="pl-10 pr-4 py-2 bg-slate-100 border-none rounded-xl text-sm focus:ring-2 focus:ring-[#80854b] outline-none w-48"
                                 onChange={async (e) => {
+                                    // Forzar mayúsculas visualmente en el input
+                                    e.target.value = e.target.value.toUpperCase();
                                     const val = e.target.value.trim();
+                                    
                                     if (val.length >= 3) {
-                                        const prod = await db.productos.where('codigo').equals(val).first();
+                                        // Buscar ignorando mayúsculas/minúsculas para mayor seguridad
+                                        const prod = await db.productos.filter(p => p.codigo.toUpperCase() === val).first();
                                         if (prod) {
                                             addToCart(prod);
                                             e.target.value = ''; // Limpiar para el siguiente scan

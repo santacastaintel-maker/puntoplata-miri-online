@@ -1,3 +1,4 @@
+import { generateId } from '../utils/idUtils';
 import { useState, useCallback } from 'react';
 import { api } from '../lib/apiClient';
 import { db } from '../lib/db';
@@ -48,7 +49,7 @@ export const useVentas = (_token?: string | null) => {
         try {
             setLoading(true);
             setError(null);
-            let resultId = crypto.randomUUID();
+            let resultId = generateId();
             let resultEstado: EstadoVenta = 'completada';
             let resultCreatedAt = new Date().toISOString();
             let resultFolio = `FOLIO-${Date.now().toString(36).toUpperCase()}`;
@@ -61,10 +62,10 @@ export const useVentas = (_token?: string | null) => {
                     resultCreatedAt = result.created_at || resultCreatedAt;
                     resultFolio = result.folio;
                 } catch (apiErr) {
-                    await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'CREAR_VENTA', payload, estado: 'pendiente', created_at: new Date().toISOString() });
+                    await db.sync_queue.add({ id: generateId(), operacion: 'CREAR_VENTA', payload, estado: 'pendiente', created_at: new Date().toISOString() });
                 }
             } else {
-                await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'CREAR_VENTA', payload, estado: 'pendiente', created_at: new Date().toISOString() });
+                await db.sync_queue.add({ id: generateId(), operacion: 'CREAR_VENTA', payload, estado: 'pendiente', created_at: new Date().toISOString() });
             }
 
             // También guardar en Dexie para historial offline
@@ -101,10 +102,10 @@ export const useVentas = (_token?: string | null) => {
                 try {
                     await api.ventas.cancelar(ventaId);
                 } catch (apiErr) {
-                    await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'CANCELAR_VENTA', payload: { id: ventaId }, estado: 'pendiente', created_at: new Date().toISOString() });
+                    await db.sync_queue.add({ id: generateId(), operacion: 'CANCELAR_VENTA', payload: { id: ventaId }, estado: 'pendiente', created_at: new Date().toISOString() });
                 }
             } else {
-                await db.sync_queue.add({ id: crypto.randomUUID(), operacion: 'CANCELAR_VENTA', payload: { id: ventaId }, estado: 'pendiente', created_at: new Date().toISOString() });
+                await db.sync_queue.add({ id: generateId(), operacion: 'CANCELAR_VENTA', payload: { id: ventaId }, estado: 'pendiente', created_at: new Date().toISOString() });
             }
             await db.ventas.update(ventaId, { estado: 'cancelada' });
             setVentas(prev => prev.map(v => v.id === ventaId ? { ...v, estado: 'cancelada' } : v));

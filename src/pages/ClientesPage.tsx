@@ -165,7 +165,7 @@ export const ClientesPage = () => {
                                         <span className="font-bold text-olivo-600">${(selectedCliente.total_compras || 0).toFixed(2)}</span>
                                     </div>
                                     <div className="flex justify-between text-xs">
-                                        <span className="text-white font-semibold italic">Andrés Montero Joyería</span>
+                                        <span className="text-white font-semibold italic">Miri Montero Joyería</span>
                                         <span className="font-bold text-slate-700">{selectedCliente.numero_compras || 0}</span>
                                     </div>
                                     <div className="flex justify-between text-xs">

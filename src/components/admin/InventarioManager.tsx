@@ -1,6 +1,7 @@
+import { generateId } from '../../utils/idUtils';
 import React, { useState, useEffect, useRef } from 'react';
 import { jsPDF } from 'jspdf';
-import JsBarcode from 'jsbarcode';
+import QRCode from 'qrcode';
 import { Plus, Search, Edit3, Trash2, Save, X, Image, Package, Tag, Upload, FileSpreadsheet, Printer, CheckSquare, Square, LayoutGrid, ScrollText } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { BarcodeLabel } from './BarcodeLabel';
@@ -8,6 +9,7 @@ import { cn } from '../ui/Button';
 import { Producto } from '../../types';
 import { db } from '../../lib/db';
 import { useCategorias } from '../../hooks/useCategorias';
+import { useProductos } from '../../hooks/useProductos';
 import { resizeImage } from '../../utils/mediaUtils';
 import { BulkPhotoUploader } from './BulkPhotoUploader';
 
@@ -20,6 +22,7 @@ interface ProductoForm {
     stock: number;
     foto_url: string;
     marca: string;
+    talla: string;
 }
 
 const EMPTY_FORM: ProductoForm = {
@@ -30,11 +33,13 @@ const EMPTY_FORM: ProductoForm = {
     precio: 0,
     stock: 0,
     foto_url: '',
-    marca: ''
+    marca: '',
+    talla: ''
 };
 
 export const InventarioManager = () => {
-    const { categorias, crearCategoria } = useCategorias();
+    const { categorias, crearCategoria, eliminarCategoria } = useCategorias();
+    const { crearProducto, actualizarProducto, eliminarProducto } = useProductos();
     const [productos, setProductos] = useState<Producto[]>([]);
     const [filtro, setFiltro] = useState('');
     const [filtroCat, setFiltroCat] = useState('');
@@ -126,8 +131,10 @@ export const InventarioManager = () => {
     }, [showForm, showCatModal, showBulkUploader, showPrintModal]);
 
     const handleOpenNew = () => {
+        // Generar un ID corto aleatorio (4 caracteres base 36)
+        const shortId = Math.random().toString(36).substring(2, 6).toUpperCase();
         setEditingId(null);
-        setForm({ ...EMPTY_FORM, codigo: `AM-${Date.now().toString(36).toUpperCase()}` });
+        setForm({ ...EMPTY_FORM, codigo: `MM-${shortId}` });
         setFormError('');
         setShowForm(true);
     };
@@ -142,7 +149,8 @@ export const InventarioManager = () => {
             precio: p.precio,
             stock: p.stock,
             foto_url: p.foto_url || '',
-            marca: p.marca || ''
+            marca: p.marca || '',
+            talla: p.talla || ''
         });
         setFormError('');
         setShowForm(true);
@@ -150,7 +158,7 @@ export const InventarioManager = () => {
 
     const handleDelete = async (id: string) => {
         if (!confirm('¿Eliminar este producto? Se marcará como inactivo.')) return;
-        await db.productos.update(id, { activo: false });
+        await eliminarProducto(id);
         fetchProductos();
     };
 
@@ -188,7 +196,7 @@ export const InventarioManager = () => {
 
         try {
             if (editingId) {
-                await db.productos.update(editingId, {
+                await actualizarProducto(editingId, {
                     codigo: form.codigo,
                     nombre: form.nombre,
                     descripcion: form.descripcion || null,
@@ -197,10 +205,11 @@ export const InventarioManager = () => {
                     stock: form.stock,
                     foto_url: form.foto_url || null,
                     marca: form.marca || null,
+                    talla: form.talla || null,
                 });
             } else {
-                await db.productos.add({
-                    id: crypto.randomUUID(),
+                await crearProducto({
+                    id: generateId(),
                     codigo: form.codigo,
                     nombre: form.nombre,
                     descripcion: form.descripcion || null,
@@ -211,6 +220,7 @@ export const InventarioManager = () => {
                     palabras_clave: null,
                     activo: true,
                     marca: form.marca || null,
+                    talla: form.talla || null,
                 });
             }
             setShowForm(false);
@@ -245,44 +255,38 @@ export const InventarioManager = () => {
                     }
 
                     let importCount = 0;
-                    await db.transaction('rw', db.productos, async () => {
-                        for (const row of data) {
-                            // Mapeo flexible de columnas comunes (Sabiduría para detectar sinónimos)
-                            const findVal = (keys: string[]) => {
-                                for (const k of keys) {
-                                    if (row[k] !== undefined && row[k] !== null) return row[k];
-                                }
-                                return null;
-                            };
+                    for (const row of data) {
+                        const findVal = (keys: string[]) => {
+                            for (const k of keys) {
+                                if (row[k] !== undefined && row[k] !== null) return row[k];
+                            }
+                            return null;
+                        };
 
-                            const codigo = (findVal(['Codigo', 'codigo', 'SKU', 'sku', 'ID', 'id', 'Ref', 'ref']) || `AM-EX-${Date.now().toString(36)}-${importCount}`).toString();
-                            const nombre = (findVal(['Nombre', 'nombre', 'Producto', 'producto', 'Articulo', 'articulo']) || 'Producto sin nombre').toString();
-                            const precioVal = findVal(['Precio', 'precio', 'Costo', 'costo', 'Valor', 'valor', 'Importe', 'importe']);
-                            const stockVal = findVal(['Stock', 'stock', 'Existencia', 'existencia', 'Cantidad', 'cantidad', 'Cant', 'cant', 'Piezas', 'piezas', 'Pzas', 'pzas', 'Qty', 'qty']);
-                            const marcaVal = findVal(['Marca', 'marca', 'Brand', 'brand']);
-                            
-                            const precio = parseFloat(precioVal?.toString() || '0');
-                            const stock = parseInt(stockVal?.toString() || '0');
-                            const descripcion = findVal(['Descripcion', 'descripcion', 'Notas', 'notas', 'Comentarios', 'comentarios'])?.toString() || null;
-                            const marca = marcaVal?.toString() || null;
-
-                            await db.productos.add({
-                                id: crypto.randomUUID(),
-                                codigo,
-                                nombre,
-                                descripcion,
-                                categoria_id: filtroCat || null, // Usar categoría actual del filtro si existe
-                                precio: isNaN(precio) ? 0 : precio,
-                                stock: isNaN(stock) ? 0 : stock,
-                                foto_url: null,
-                                palabras_clave: null,
-                                activo: true,
-                                origen: 'excel',
-                                marca: marca
-                            });
+                        const sku = (findVal(['Codigo', 'codigo', 'SKU', 'sku', 'ID', 'id', 'Ref', 'ref']) || `MM-EX-${Date.now().toString(36)}-${importCount}`).toString();
+                        
+                        const p = {
+                            id: generateId(),
+                            codigo: sku,
+                            nombre: (findVal(['Nombre', 'nombre', 'Producto', 'producto', 'Articulo', 'articulo']) || 'Producto sin nombre').toString(),
+                            descripcion: findVal(['Descripcion', 'descripcion', 'Notas', 'notas', 'Comentarios', 'comentarios'])?.toString() || null,
+                            categoria_id: filtroCat || null,
+                            precio: parseFloat(findVal(['Precio', 'precio', 'Costo', 'costo', 'Valor', 'valor', 'Importe', 'importe'])?.toString() || '0') || 0,
+                            stock: parseInt(findVal(['Stock', 'stock', 'Existencia', 'existencia', 'Cantidad', 'cantidad', 'Cant', 'cant', 'Piezas', 'piezas', 'Pzas', 'pzas', 'Qty', 'qty'])?.toString() || '0') || 0,
+                            foto_url: null,
+                            palabras_clave: null,
+                            activo: true,
+                            marca: findVal(['Marca', 'marca', 'Brand', 'brand'])?.toString() || null,
+                            talla: null
+                        };
+                        
+                        try {
+                            await crearProducto(p);
                             importCount++;
+                        } catch (err) {
+                            console.error('Error al importar producto:', err);
                         }
-                    });
+                    }
 
                     alert(`¡Éxito! Se importaron ${importCount} productos.`);
                     fetchProductos();
@@ -313,79 +317,183 @@ export const InventarioManager = () => {
         return categorias.find(c => c.id === catId)?.nombre || 'Sin categoría';
     };
 
+    const handleExportBarTender = () => {
+        try {
+            console.log('Iniciando exportación BarTender...');
+            const selectedProducts = productos.filter(p => selectedForLabels.includes(p.id));
+            
+            if (selectedProducts.length === 0) {
+                alert('No hay productos seleccionados para exportar. Por favor, selecciona al menos uno en la lista.');
+                return;
+            }
+
+            const excelData: any[] = [];
+            selectedProducts.forEach(p => {
+                const copies = labelQuantities[p.id] || 1;
+                for (let i = 0; i < copies; i++) {
+                    excelData.push({
+                        SKU: p.codigo.toUpperCase(),
+                        Nombre: p.nombre,
+                        Precio: p.precio,
+                        PrecioEtiqueta: `$${p.precio % 1 === 0 ? p.precio.toFixed(0) : p.precio.toFixed(2)}`,
+                        Talla: p.talla || ''
+                    });
+                }
+            });
+
+            if (excelData.length === 0) {
+                alert('No se generaron datos para el Excel. Verifica las cantidades.');
+                return;
+            }
+
+            console.log('Generando archivo con', excelData.length, 'filas...');
+            const ws = XLSX.utils.json_to_sheet(excelData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Etiquetas BarTender");
+            
+            // Método de descarga manual para mayor compatibilidad
+            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'BarTender_Export_1777681081602.xlsx';
+            document.body.appendChild(a);
+            a.click();
+            
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+
+            console.log('Descarga iniciada manualmente.');
+        } catch (error) {
+            console.error('Error en exportación BarTender:', error);
+            alert('Error técnico al generar el Excel: ' + (error as Error).message);
+        }
+    };
+
     const handleDownloadRolloPDF = async () => {
+        // ── Medidas reales de la etiqueta ──────────────────────────────
+        //   62 mm de ancho × 10.8 mm de alto (landscape)
+        //   Sección 1 (  0 – 14.2 mm): PRECIO grande
+        //   Sección 2 ( 14.2 – 28.4 mm): Código de barras
+        //   Sección 3 ( 28.4 – 62 mm ): SKU grande
+        //
+        // Estrategia: dibujamos TODO en un canvas de alta resolución
+        // y lo insertamos como PNG. Así la impresora siempre obtiene
+        // texto nítido, sin importar cómo interprete el PDF.
+        // ──────────────────────────────────────────────────────────────
+
+        const W_MM = 62;
+        const H_MM = 10.8;
+        const DPI  = 300;                          // resolución objetivo
+        const PX_PER_MM = DPI / 25.4;             // ≈ 11.81 px/mm
+        const CW   = Math.round(W_MM * PX_PER_MM); // 733 px
+        const CH   = Math.round(H_MM * PX_PER_MM); // 128 px
+
+        // Divisiones en píxeles
+        const Q1_END = Math.round(14.2 * PX_PER_MM);   // fin sección precio
+        const Q2_END = Math.round(28.4 * PX_PER_MM);   // fin sección barcode
+
         const doc = new jsPDF({
             orientation: 'landscape',
             unit: 'mm',
-            format: [60, 11]
+            format: [W_MM, H_MM]
         });
 
         const selectedProducts = productos.filter(p => selectedForLabels.includes(p.id));
         let isFirstPage = true;
-        const canvas = document.createElement('canvas');
 
-        selectedProducts.forEach(p => {
+        const barcodeCanvas = document.createElement('canvas');
+        const labelCanvas   = document.createElement('canvas');
+        labelCanvas.width   = CW;
+        labelCanvas.height  = CH;
+        const ctx = labelCanvas.getContext('2d')!;
+
+        for (const p of selectedProducts) {
             const copies = labelQuantities[p.id] || 1;
             for (let i = 0; i < copies; i++) {
-                if (!isFirstPage) {
-                    doc.addPage([60, 11], 'landscape');
-                }
+                if (!isFirstPage) doc.addPage([W_MM, H_MM], 'landscape');
                 isFirstPage = false;
 
-                // 1. Nombre (Arriba centrado en los 15mm)
-                doc.setFontSize(5);
-                doc.setTextColor(51, 65, 85);
-                const shortName = p.nombre.length > 20 ? p.nombre.substring(0, 18) + '..' : p.nombre;
-                doc.text(shortName.toUpperCase(), 7.5, 2.2, { align: 'center' });
+                // ── Limpiar canvas ──────────────────────────────────────
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, 0, CW, CH);
 
-                // 2. Código de Barras (Centro de los 15mm)
-                JsBarcode(canvas, p.codigo.toUpperCase(), {
-                    format: "CODE128",
-                    width: 2,
-                    height: 40,
-                    displayValue: true,
-                    fontSize: 16,
-                    margin: 0
+                const PAD = Math.round(2 * PX_PER_MM); // 2mm de padding interno
+
+                // ══════════════════════════════════════════════════════
+                // SECCIÓN 1 (0 – Q1_END): PRECIO
+                // ══════════════════════════════════════════════════════
+                const sec1W = Q1_END;
+                const precioText = `$${p.precio % 1 === 0 ? p.precio.toFixed(0) : p.precio.toFixed(2)}`;
+
+                // Calcular tamaño de fuente que llene ~80% del ancho de la sección
+                let fontSize = CH * 0.55; // empezamos por la altura
+                ctx.font = `900 ${fontSize}px Arial, sans-serif`;
+                while (ctx.measureText(precioText).width > sec1W - PAD * 2 && fontSize > 10) {
+                    fontSize -= 1;
+                    ctx.font = `900 ${fontSize}px Arial, sans-serif`;
+                }
+
+                ctx.fillStyle = '#000000';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.font = `900 ${fontSize}px Arial, sans-serif`;
+                ctx.fillText(precioText, sec1W / 2, CH / 2);
+
+                // ══════════════════════════════════════════════════════
+                // SECCIÓN 2 (Q1_END – Q2_END): BARCODE (arriba) + SKU (abajo)
+                // ══════════════════════════════════════════════════════
+                const sec2W  = Q2_END - Q1_END;
+                const sec2X  = Q1_END;
+                const PAD2   = Math.round(1 * PX_PER_MM); // 1mm padding sección 2
+
+                // Dividir verticalmente: barcode = 65% alto, SKU = 35% alto
+                const barcodeAreaH = Math.round(CH * 0.60);
+                const skuAreaH     = CH - barcodeAreaH;
+
+                // --- QR Code en la zona superior de sección 2 ---
+                const qrSize = Math.min(sec2W - PAD2 * 2, barcodeAreaH - PAD2 * 2);
+                await QRCode.toCanvas(barcodeCanvas, p.codigo.toUpperCase(), {
+                    width: qrSize,
+                    margin: 0,
+                    color: {
+                        dark: '#000000',
+                        light: '#FFFFFF'
+                    }
                 });
-                const barcodeImg = canvas.toDataURL("image/png");
-                doc.addImage(barcodeImg, 'PNG', 1, 3, 13, 5);
+                
+                // Centrar el QR horizontalmente en su sección
+                const qrXOffset = (sec2W - qrSize) / 2;
+                ctx.drawImage(
+                    barcodeCanvas,
+                    sec2X + qrXOffset, PAD2,
+                    qrSize, qrSize
+                );
 
-                // 3. Precio (Abajo centrado en los 15mm)
-                doc.setFontSize(7);
-                doc.setFont("helvetica", "bold");
-                doc.setTextColor(128, 133, 75);
-                doc.text(`$${p.precio.toFixed(2)}`, 7.5, 10, { align: 'center' });
+                // --- SKU en la zona inferior de sección 2 ---
+                const skuText = p.codigo.toUpperCase();
+                let skuFontSize = skuAreaH * 0.80; // empezamos por la altura del área
+                ctx.font = `bold ${skuFontSize}px Arial, sans-serif`;
+                while (ctx.measureText(skuText).width > sec2W - PAD2 * 2 && skuFontSize > 6) {
+                    skuFontSize -= 1;
+                    ctx.font = `bold ${skuFontSize}px Arial, sans-serif`;
+                }
+                ctx.fillStyle    = '#000000';
+                ctx.textAlign    = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(skuText, sec2X + sec2W / 2, barcodeAreaH + skuAreaH / 2);
 
-                // El resto (15mm a 60mm) queda blanco
+                // ── Insertar el canvas completo como imagen en el PDF ──
+                const imgData = labelCanvas.toDataURL('image/png');
+                doc.addImage(imgData, 'PNG', 0, 0, W_MM, H_MM);
             }
-        });
+        }
 
-        doc.save(`Etiquetas_Joyeria_${Date.now()}.pdf`);
-    };
-
-    const handleExportBarTender = () => {
-        const selectedProducts = productos.filter(p => selectedForLabels.includes(p.id));
-        if (selectedProducts.length === 0) return;
-
-        const data: any[] = [];
-        selectedProducts.forEach(p => {
-            const copies = labelQuantities[p.id] || 1;
-            for (let i = 0; i < copies; i++) {
-                data.push({
-                    Codigo: p.codigo,
-                    Nombre: p.nombre,
-                    Precio: p.precio,
-                    Marca: p.marca || ''
-                });
-            }
-        });
-
-        const ws = XLSX.utils.json_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Etiquetas");
-        
-        // El nombre fijo solicitado:
-        XLSX.writeFile(wb, "mirietiquetas.xlsx");
+        doc.save(`Etiquetas_AMJ_${Date.now()}.pdf`);
     };
 
     return (
@@ -604,7 +712,7 @@ export const InventarioManager = () => {
                                     value={form.codigo}
                                     onChange={e => setForm({ ...form, codigo: e.target.value })}
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#80854b] outline-none text-sm font-mono"
-                                    placeholder="AM-001"
+                                    placeholder="MM-001"
                                 />
                             </div>
 
@@ -656,6 +764,26 @@ export const InventarioManager = () => {
                                     {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                                 </select>
                             </div>
+
+                            {/* Talla Condicional (Anillos o Pulseras) */}
+                            {(() => {
+                                const catName = categorias.find(c => c.id === form.categoria_id)?.nombre?.toLowerCase() || '';
+                                if (catName === 'anillos' || catName === 'pulseras') {
+                                    return (
+                                        <div>
+                                            <label className="block text-sm font-semibold text-slate-700 mb-1">Talla (Numérica o Texto)</label>
+                                            <input
+                                                type="text"
+                                                value={form.talla}
+                                                onChange={e => setForm({ ...form, talla: e.target.value })}
+                                                placeholder="Ej. 7.5"
+                                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#80854b] outline-none text-sm"
+                                            />
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })()}
 
                             {/* Precio + Stock */}
                             <div className="grid grid-cols-2 gap-4">
@@ -729,7 +857,7 @@ export const InventarioManager = () => {
                                         <span className="text-sm font-medium text-slate-700">{c.nombre}</span>
                                         <button onClick={async () => {
                                             if (confirm(`¿Eliminar la categoría "${c.nombre}"?`)) {
-                                                await db.categorias.delete(c.id);
+                                                await eliminarCategoria(c.id);
                                             }
                                         }} className="text-rose-400 hover:text-rose-600 transition-colors">
                                             <Trash2 className="w-4 h-4" />
@@ -738,6 +866,26 @@ export const InventarioManager = () => {
                                 ))}
                                 {categorias.length === 0 && <p className="text-sm text-slate-400 text-center py-4">No hay categorías aún.</p>}
                             </ul>
+
+                            <button 
+                                onClick={async () => {
+                                    if(confirm('¿Recuperar categorías locales perdidas? Esto enviará tus categorías locales a la nube.')) {
+                                        try {
+                                            const loc = await db.categorias.toArray();
+                                            for(const cat of loc) {
+                                                await crearCategoria({ nombre: cat.nombre, descripcion: cat.descripcion || null, orden_visual: cat.orden_visual || 0 });
+                                            }
+                                            alert('¡Sincronización completada!');
+                                        } catch(e: any) {
+                                            alert('Error: ' + e.message);
+                                        }
+                                    }
+                                }}
+                                className="w-full mb-4 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-colors border border-slate-200"
+                            >
+                                🔄 Recuperar Categorías Locales
+                            </button>
+
                             <div className="flex gap-2">
                                 <input
                                     type="text"

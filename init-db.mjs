@@ -1,7 +1,9 @@
-// POST /api/schema — inicializa todas las tablas en Turso (correr UNA sola vez)
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { turso } from './_turso';
-import { handleCors, sendError } from './_helpers';
+import { createClient } from '@libsql/client/http';
+
+const turso = createClient({
+    url: process.env.TURSO_DATABASE_URL,
+    authToken: process.env.TURSO_AUTH_TOKEN,
+});
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS vendedores (
@@ -93,14 +95,12 @@ CREATE TABLE IF NOT EXISTS config (
     updated_at TEXT DEFAULT (datetime('now'))
 );
 
--- Datos iniciales de configuración
 INSERT OR IGNORE INTO config (key, value) VALUES
     ('max_descuento', '15'),
     ('banco_nombre', 'BANAMEX'),
     ('clabe_cuenta', ''),
     ('titular_cuenta', 'Miri Montero');
 
--- Categorías por defecto
 INSERT OR IGNORE INTO categorias (id, nombre, descripcion, orden_visual) VALUES
     ('cat-1', 'Anillos', NULL, 1),
     ('cat-2', 'Collares', NULL, 2),
@@ -113,30 +113,35 @@ INSERT OR IGNORE INTO categorias (id, nombre, descripcion, orden_visual) VALUES
     ('cat-9', 'Dijes', NULL, 9),
     ('cat-10', 'Gargantillas', NULL, 10);
 
--- Vendedor admin por defecto
 INSERT OR IGNORE INTO vendedores (id, nombre, email, color_identificador, rol, activo, pin_auth) VALUES
     ('admin-id-123', 'Dueño', NULL, '#80854b', 'admin', 1, '9999'),
     ('vendedor-id-456', 'Vendedor Estándar', NULL, '#3B82F6', 'vendedor', 1, NULL);
 `;
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-    if (handleCors(req, res)) return;
-    if (req.method !== 'POST') return sendError(res, 405, 'Method not allowed');
-
+async function run() {
     try {
-        // Ejecutar cada sentencia por separado (Turso no acepta múltiples statements en batch simple)
         const statements = SCHEMA_SQL
             .split(';')
             .map(s => s.trim())
-            .filter(s => s.length > 0 && !s.startsWith('--'));
+            .filter(s => s.length > 0);
 
         for (const sql of statements) {
+            console.log('Ejecutando:', sql.substring(0, 50) + '...');
             await turso.execute(sql);
         }
+        
+        // Add talla column if it doesn't exist
+        try {
+            await turso.execute('ALTER TABLE productos ADD COLUMN talla TEXT;');
+            console.log('Columna talla agregada a productos.');
+        } catch (e) {
+            console.log('La columna talla ya existe o hubo un error menor:', e.message);
+        }
 
-        res.json({ success: true, message: 'Esquema de base de datos inicializado correctamente.' });
-    } catch (err: any) {
-        console.error('Schema error:', err);
-        sendError(res, 500, err.message || 'Error inicializando esquema');
+        console.log('Esquema inicializado correctamente.');
+    } catch (e) {
+        console.error('Error inicializando esquema:', e);
     }
 }
+
+run();
