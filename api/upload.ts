@@ -2,8 +2,8 @@
 // Content-Type: multipart/form-data con campo 'file'
 // Devuelve: { key: 'uuid.jpg' }
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { uploadToR2 } from './_r2';
-import { handleCors, sendError } from './_helpers';
+import { uploadToR2 } from './_r2.js';
+import { handleCors, sendError } from './_helpers.js';
 import { IncomingForm, File as FormidableFile } from 'formidable';
 import * as fs from 'fs';
 import * as path from 'path';

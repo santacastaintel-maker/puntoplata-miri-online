@@ -1,8 +1,8 @@
 // GET /api/config — obtener todas las configuraciones
 // POST /api/config — guardar/actualizar múltiples configuraciones
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { turso } from './_turso';
-import { handleCors, sendError } from './_helpers';
+import { turso } from './_turso.js';
+import { handleCors, sendError } from './_helpers.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (handleCors(req, res)) return;

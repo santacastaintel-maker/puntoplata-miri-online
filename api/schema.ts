@@ -1,7 +1,7 @@
 // POST /api/schema — inicializa todas las tablas en Turso (correr UNA sola vez)
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { turso } from './_turso';
-import { handleCors, sendError } from './_helpers';
+import { turso } from './_turso.js';
+import { handleCors, sendError } from './_helpers.js';
 
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS vendedores (

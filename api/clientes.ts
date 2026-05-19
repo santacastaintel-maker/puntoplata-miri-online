@@ -3,8 +3,8 @@
 // PATCH /api/clientes?id= — actualizar datos del cliente
 // GET /api/clientes?id=&historial=true — historial de ventas
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { turso } from './_turso';
-import { handleCors, sendError } from './_helpers';
+import { turso } from './_turso.js';
+import { handleCors, sendError } from './_helpers.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (handleCors(req, res)) return;

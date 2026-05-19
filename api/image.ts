@@ -1,8 +1,8 @@
 // GET /api/image?key=uuid.jpg — proxy de imágenes desde R2
 // Genera URL firmada y redirige al cliente
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getPresignedUrl } from './_r2';
-import { handleCors, sendError } from './_helpers';
+import { getPresignedUrl } from './_r2.js';
+import { handleCors, sendError } from './_helpers.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (handleCors(req, res)) return;

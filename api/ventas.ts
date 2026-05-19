@@ -2,8 +2,8 @@
 // GET /api/ventas?vendedor_id=&fecha_desde=&fecha_hasta=&sesion_id=
 // PATCH /api/ventas?id=&action=cancelar — cancelar venta
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { turso } from './_turso';
-import { handleCors, sendError } from './_helpers';
+import { turso } from './_turso.js';
+import { handleCors, sendError } from './_helpers.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (handleCors(req, res)) return;
