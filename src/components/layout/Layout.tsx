@@ -39,7 +39,7 @@ export const Layout = () => {
                 <div className="p-6 flex flex-col items-start gap-3">
                     <div className="flex items-center gap-3">
                         <img
-                            src="/Miri_logo.png"
+                            src="/andres_logo.png"
                             alt="Logo Andrés Montero"
                             className="w-9 h-9 rounded-lg object-cover opacity-80"
                         />
