@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PackageSearch, KeyRound, BarChart3, Copy, CheckCircle2, ShieldCheck, Lock, AlertCircle, Wrench, Download, Upload, Users } from 'lucide-react';
+import { PackageSearch, KeyRound, BarChart3, Copy, CheckCircle2, ShieldCheck, Lock, AlertCircle, Wrench, Download, Upload, Users, Cloud } from 'lucide-react';
 import { cn } from '../components/ui/Button';
 import { useAuth } from '../hooks/useAuth';
 import { generateLicenseKey, LicenseType } from '../utils/security';
@@ -7,6 +7,8 @@ import { db } from '../lib/db';
 import { InventarioManager } from '../components/admin/InventarioManager';
 import { EstadisticasViewer } from '../components/admin/EstadisticasViewer';
 import { VendedoresManager } from '../components/admin/VendedoresManager';
+import { api } from '../lib/apiClient';
+import { base64ToFile } from '../utils/mediaUtils';
 
 type Tab = 'inventario' | 'personal' | 'licencias' | 'estadisticas' | 'seguridad' | 'herramientas';
 
@@ -187,6 +189,119 @@ export const AdminPage = () => {
             }
         };
         reader.readAsText(file);
+    };
+
+    const handlePushToCloud = async () => {
+        if (!navigator.onLine) {
+            alert('Debes estar conectado a Internet para subir los datos a la nube.');
+            return;
+        }
+
+        if (!confirm('Esto subirá todo tu catálogo, categorías, vendedores y ventas locales a la base de datos en la nube (Turso). Si ya existen en la nube, se actualizarán. ¿Deseas continuar?')) {
+            return;
+        }
+
+        try {
+            setIsProcessing(true);
+            
+            // 1. Sincronizar Categorías
+            const localCats = await db.categorias.toArray();
+            let cloudCats: any[] = [];
+            try {
+                cloudCats = await api.categorias.list() as any[];
+            } catch (err) {
+                console.error('Error fetching cloud categories', err);
+            }
+            const cloudCatIds = new Set(cloudCats.map(c => c.id));
+            
+            for (const cat of localCats) {
+                if (!cloudCatIds.has(cat.id)) {
+                    await api.categorias.create(cat);
+                } else {
+                    await api.categorias.update(cat.id, cat);
+                }
+            }
+
+            // 2. Sincronizar Vendedores
+            const localVends = await db.vendedores.toArray();
+            let cloudVends: any[] = [];
+            try {
+                cloudVends = await api.vendedores.list() as any[];
+            } catch (err) {
+                console.error('Error fetching cloud vendors', err);
+            }
+            const cloudVendIds = new Set(cloudVends.map(v => v.id));
+
+            for (const vend of localVends) {
+                if (!cloudVendIds.has(vend.id)) {
+                    await api.vendedores.create(vend);
+                } else {
+                    await api.vendedores.update(vend.id, vend);
+                }
+            }
+
+            // 3. Sincronizar Productos
+            const localProds = await db.productos.toArray();
+            let cloudProds: any[] = [];
+            try {
+                cloudProds = await api.productos.list() as any[];
+            } catch (err) {
+                console.error('Error fetching cloud products', err);
+            }
+            const cloudProdIds = new Set(cloudProds.map(p => p.id));
+
+            for (const prod of localProds) {
+                let finalProd = { ...prod };
+                if (finalProd.foto_url && finalProd.foto_url.startsWith('data:image')) {
+                    try {
+                        const file = base64ToFile(finalProd.foto_url, `push-${finalProd.id}.jpg`);
+                        const key = await api.photos.upload(file);
+                        finalProd.foto_key = key;
+                        finalProd.foto_url = key;
+                        await db.productos.update(prod.id, { foto_url: key, foto_key: key });
+                    } catch (uploadErr) {
+                        console.error('Error subiendo imagen para producto', prod.id, uploadErr);
+                    }
+                }
+
+                if (!cloudProdIds.has(finalProd.id)) {
+                    await api.productos.create(finalProd);
+                } else {
+                    await api.productos.update(finalProd.id, finalProd);
+                }
+            }
+
+            // 4. Sincronizar Ventas
+            const localVentas = await db.ventas.toArray();
+            const localDetalles = await db.venta_detalles.toArray();
+            
+            const detallesPorVenta = new Map<string, any[]>();
+            for (const d of localDetalles) {
+                if (!detallesPorVenta.has(d.venta_id)) {
+                    detallesPorVenta.set(d.venta_id, []);
+                }
+                detallesPorVenta.get(d.venta_id)!.push(d);
+            }
+
+            for (const venta of localVentas) {
+                try {
+                    const payload = {
+                        ...venta,
+                        detalles: detallesPorVenta.get(venta.id) || []
+                    };
+                    await api.ventas.create(payload);
+                } catch (err: any) {
+                    console.warn(`Error al subir venta ${venta.id}:`, err.message);
+                }
+            }
+
+            alert('¡Sincronización masiva a la nube completada con éxito!');
+            window.location.reload();
+        } catch (err: any) {
+            alert('Error en la sincronización masiva: ' + err.message);
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     return (
@@ -618,6 +733,22 @@ export const AdminPage = () => {
                                     {isProcessing ? 'Procesando...' : 'Restaurar desde archivo'}
                                     <input type="file" className="hidden" accept=".ppdata,.json" onChange={handleRestore} disabled={isProcessing} />
                                 </label>
+
+                                <div className="relative pt-2">
+                                    <div className="absolute inset-x-0 top-1/2 h-px bg-slate-200"></div>
+                                    <div className="relative flex justify-center">
+                                        <span className="bg-white px-2 text-xs text-slate-400 font-medium">Sincronización en la Nube</span>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handlePushToCloud}
+                                    disabled={isProcessing}
+                                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Cloud className="w-5 h-5" />
+                                    Subir Datos Locales a la Nube (Turso)
+                                </button>
                             </div>
                         </div>
 
