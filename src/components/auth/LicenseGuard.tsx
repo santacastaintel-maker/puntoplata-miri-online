@@ -198,8 +198,8 @@ export const LicenseGuard = ({ children }: LicenseGuardProps) => {
                         <AlertTriangle className="w-5 h-5" />
                         <span className="font-bold text-sm">
                             {daysLeft === 0
-                                ? "¡Tu licencia expira HOY! Contacta al administrador para renovar."
-                                : `Atención: Tu licencia expira en ${daysLeft} ${daysLeft === 1 ? 'día' : 'días'}.`}
+                                ? "¡LA SUSCRIPCIÓN A LA BASE DE DATOS SUPABASE NECESITA SER ATENDIDA HOY MISMO!"
+                                : `LA SUSCRIPCIÓN A LA BASE DE DATOS SUPABASE NECESITA SER ATENDIDA (${daysLeft} ${daysLeft === 1 ? 'día restante' : 'días restantes'})`}
                         </span>
                     </div>
                     <button
