@@ -1,4 +1,4 @@
-# 💎 Manual de Usuario: Andrés Montero Joyería (PUNTOPLATA)
+# 💎 Manual de Usuario: Miri Montero Joyería (PUNTOPLATA)
 
 ¡Bienvenido al sistema de gestión y punto de venta diseñado exclusivamente para el mercado de joyería premium! Este manual te guiará paso a paso para dominar todas las funciones del sistema, desde la instalación hasta la gestión avanzada de inventarios.
 
@@ -128,4 +128,4 @@ Si el precio de la plata sube, no cambies uno por uno. Ve a **Herramientas > Mul
 ---
 
 *Desarrollado para la excelencia en joyería.*
-*Andrés Montero Joyería © 2026*
+*Miri Montero Joyería © 2026*

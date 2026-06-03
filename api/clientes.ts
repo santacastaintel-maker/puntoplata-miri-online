@@ -44,11 +44,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
 
         if (req.method === 'POST') {
-            const { nombre, telefono, email } = req.body;
+            const { id: reqId, nombre, telefono, email } = req.body;
             if (!nombre?.trim()) return sendError(res, 400, 'nombre requerido');
 
-            // Deduplicación
-            if (telefono) {
+            // Deduplicación (solo si no se proporciona un id explícito para evitar colisión de re-creación)
+            if (!reqId && telefono) {
                 const exist = await turso.execute({
                     sql: 'SELECT * FROM clientes WHERE telefono = ? LIMIT 1',
                     args: [telefono]
@@ -56,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 if (exist.rows.length > 0) return res.json(formatCliente(exist.rows[0]));
             }
 
-            const id = crypto.randomUUID();
+            const id = reqId || crypto.randomUUID();
             const now = new Date().toISOString();
             await turso.execute({
                 sql: `INSERT INTO clientes (id,nombre,telefono,email,tipo_cliente,notas,total_compras,numero_compras,apartados_pendientes,cancelaciones,created_at)

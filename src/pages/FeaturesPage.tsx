@@ -72,7 +72,7 @@ export const FeaturesPage = () => {
                     Tecnología de Vanguardia
                 </div>
                 <h1 className="text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight">
-                    Funciones de <span className="text-olivo-600 italic">Andrés Montero Joyería</span>
+                    Funciones de <span className="text-olivo-600 italic">Miri Montero Joyería</span>
                 </h1>
                 <p className="text-lg text-slate-600 max-w-2xl mx-auto font-medium">
                     Un sistema diseñado específicamente para el mercado de joyería mexicana, enfocado en rapidez, diseño y total independencia.

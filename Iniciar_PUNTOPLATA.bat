@@ -1,7 +1,7 @@
 @echo off
 title Lanzador PUNTOPLATA
 :: Cambiar al directorio del proyecto
-cd /d "C:\Users\Elvis\Documents\PROYECTOS_WEB\PUNTOPLATA"
+cd /d "%~dp0"
 
 echo ==========================================
 echo    INICIANDO PUNTOPLATA POS...

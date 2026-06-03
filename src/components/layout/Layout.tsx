@@ -39,11 +39,11 @@ export const Layout = () => {
                 <div className="p-6 flex flex-col items-start gap-3">
                     <div className="flex items-center gap-3">
                         <img
-                            src="/andres_logo.png"
-                            alt="Logo Andrés Montero"
+                            src="/Miri_logo.png"
+                            alt="Logo Miri Montero"
                             className="w-9 h-9 rounded-lg object-cover opacity-80"
                         />
-                        <h1 className="text-xl font-bold tracking-tight text-[#80854b]">Andrés Montero <span className="text-slate-900">Joyería</span></h1>
+                        <h1 className="text-xl font-bold tracking-tight text-[#80854b]">Miri Montero <span className="text-slate-900">Joyería</span></h1>
                     </div>
                 </div>
 
@@ -101,7 +101,7 @@ export const Layout = () => {
                 <div className="flex-1 overflow-y-auto w-full mx-auto">
                     {/* Header Mobile Opcional */}
                     <div className="md:hidden sticky top-0 bg-white/80 backdrop-blur-md border-b border-slate-200 z-10 px-4 py-3 flex justify-between items-center pt-safe">
-                        <h1 className="text-lg font-bold text-slate-900 tracking-tight">Andrés Montero Joyería</h1>
+                        <h1 className="text-lg font-bold text-slate-900 tracking-tight">Miri Montero Joyería</h1>
                         <div
                             className="w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm cursor-pointer"
                             style={{ backgroundColor: vendedorActual?.color_identificador || '#64748B' }}

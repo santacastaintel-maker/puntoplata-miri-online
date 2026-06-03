@@ -18,10 +18,14 @@ export const useProductos = () => {
 
             if (navigator.onLine) {
                 // 🌐 Online — usar API Turso
-                data = await api.productos.list(query, {
+                const rawData = await api.productos.list(query, {
                     categoria_id: filtros?.categoria_id,
                     marca: filtros?.marca,
                 }) as Producto[];
+                data = rawData.map(p => ({
+                    ...p,
+                    foto_url: api.photos.url(p.foto_url)
+                }));
                 // Guardar en caché local
                 await db.productos.bulkPut(data.map(p => ({ ...p, activo: p.activo ? true : false })));
             } else {
@@ -58,7 +62,11 @@ export const useProductos = () => {
             setLoading(true);
             if (navigator.onLine) {
                 const list = await api.productos.list(codigo) as Producto[];
-                return list.find(p => p.codigo.toLowerCase() === codigo.toLowerCase()) || null;
+                const prod = list.find(p => p.codigo.toLowerCase() === codigo.toLowerCase()) || null;
+                if (prod) {
+                    prod.foto_url = api.photos.url(prod.foto_url);
+                }
+                return prod;
             }
             const data = await db.productos.where('codigo').equals(codigo).filter(p => !!p.activo).first();
             if (data?.categoria_id) {

@@ -135,7 +135,7 @@ export const AdminPage = () => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `AMJ_Backup_${new Date().toISOString().split('T')[0]}.ppdata`;
+            a.download = `MMJ_Backup_${new Date().toISOString().split('T')[0]}.ppdata`;
             a.click();
             URL.revokeObjectURL(url);
         } catch (err) {
@@ -193,11 +193,11 @@ export const AdminPage = () => {
 
     const handlePushToCloud = async () => {
         if (!navigator.onLine) {
-            alert('Debes estar conectado a Internet para subir los datos a la nube.');
+            alert('Debes estar conectado a Internet para subir los datos al servidor de la nube.');
             return;
         }
 
-        if (!confirm('Esto subirá todo tu catálogo, categorías, vendedores y ventas locales a la base de datos en la nube (Turso). Si ya existen en la nube, se actualizarán. ¿Deseas continuar?')) {
+        if (!confirm('Esto subirá todo tu catálogo, categorías, vendedores, clientes y ventas locales al servidor de la nube. Si ya existen, se actualizarán. ¿Deseas continuar?')) {
             return;
         }
 
@@ -237,6 +237,24 @@ export const AdminPage = () => {
                     await api.vendedores.create(vend);
                 } else {
                     await api.vendedores.update(vend.id, vend);
+                }
+            }
+
+            // 2b. Sincronizar Clientes
+            const localClients = await db.clientes.toArray();
+            let cloudClients: any[] = [];
+            try {
+                cloudClients = await api.clientes.list() as any[];
+            } catch (err) {
+                console.error('Error fetching cloud clients', err);
+            }
+            const cloudClientIds = new Set(cloudClients.map(c => c.id));
+
+            for (const client of localClients) {
+                if (!cloudClientIds.has(client.id)) {
+                    await api.clientes.create(client);
+                } else {
+                    await api.clientes.update(client.id, client);
                 }
             }
 
@@ -309,7 +327,7 @@ export const AdminPage = () => {
             {/* Header del Admin */}
             <div className="bg-white border-b border-slate-200 px-6 py-4 laurel-bg">
                 <h1 className="text-2xl font-bold text-slate-800">Panel de Administración</h1>
-                <p className="text-slate-500 text-sm mt-1">Andrés Montero Joyería - Gestión Central</p>
+                <p className="text-slate-500 text-sm mt-1">Miri Montero Joyería - Gestión Central</p>
 
                 {/* Tabs */}
                 <div className="flex gap-6 mt-6 border-b border-slate-100 overflow-x-auto hide-scrollbar pb-1">
@@ -479,7 +497,7 @@ export const AdminPage = () => {
                                 <div className="mt-6 pt-6 border-t border-olivo-200/50">
                                     <p className="text-sm text-olivo-800">
                                         📲 <strong>Instrucción para el cliente:</strong><br />
-                                        "Abre la aplicación Andrés Montero Joyería en tu dispositivo, ingresa exactamente como nombre del negocio <span className="font-bold underline">{businessName.trim().toUpperCase()}</span> y pega esta llave de activación."
+                                        "Abre la aplicación Miri Montero Joyería en tu dispositivo, ingresa exactamente como nombre del negocio <span className="font-bold underline">{businessName.trim().toUpperCase()}</span> y pega esta llave de activación."
                                     </p>
                                 </div>
                             </div>
@@ -747,7 +765,7 @@ export const AdminPage = () => {
                                     className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
                                 >
                                     <Cloud className="w-5 h-5" />
-                                    Subir Datos Locales a la Nube (Turso)
+                                    Subir los Datos locales al servidor de la Nube
                                 </button>
                             </div>
                         </div>

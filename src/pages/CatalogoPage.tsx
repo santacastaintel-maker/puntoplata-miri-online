@@ -43,12 +43,12 @@ export const CatalogoPage = () => {
     }, []);
 
     const handleExportText = () => {
-        generateCatalogPDF(productos, 'Andrés Montero Joyería', { includeImages: false, hidePrices });
+        generateCatalogPDF(productos, 'Miri Montero Joyería', { includeImages: false, hidePrices });
         setIsExportModalOpen(false);
     };
 
     const handleExportSingle = () => {
-        generateCatalogPDF(productos, 'Andrés Montero Joyería', { includeImages: true, hidePrices });
+        generateCatalogPDF(productos, 'Miri Montero Joyería', { includeImages: true, hidePrices });
         setIsExportModalOpen(false);
     };
 
@@ -66,7 +66,7 @@ export const CatalogoPage = () => {
                 // Permitir que la UI se actualice
                 await new Promise(resolve => setTimeout(resolve, 500));
 
-                generateCatalogPDF(chunk, 'Andrés Montero Joyería', {
+                generateCatalogPDF(chunk, 'Miri Montero Joyería', {
                     includeImages: true,
                     hidePrices,
                     batchInfo: { current: i + 1, total: totalBatches }

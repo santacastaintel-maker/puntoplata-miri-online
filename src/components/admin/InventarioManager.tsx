@@ -493,7 +493,7 @@ export const InventarioManager = () => {
             }
         }
 
-        doc.save(`Etiquetas_AMJ_${Date.now()}.pdf`);
+        doc.save(`Etiquetas_MMJ_${Date.now()}.pdf`);
     };
 
     return (

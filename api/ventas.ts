@@ -38,16 +38,32 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         // ── POST (crear venta) ────────────────────────────────────────────────
         if (req.method === 'POST') {
             const payload = req.body;
-            const { sesion_id, vendedor_id, cliente_id, subtotal, descuento, total,
+            const { id: reqId, folio: reqFolio, sesion_id, vendedor_id, cliente_id, subtotal, descuento, total,
                     metodo_pago, notas, detalles, monto_abonado, esApartado } = payload;
 
             if (!vendedor_id) return sendError(res, 400, 'vendedor_id requerido');
 
-            // Generar folio único
-            const countR = await turso.execute('SELECT COUNT(*) as cnt FROM ventas');
-            const count = Number((countR.rows[0] as any).cnt);
-            const folio = `FOLIO-${String(count + 1).padStart(5, '0')}`;
-            const ventaId = crypto.randomUUID();
+            // Evitar duplicados si ya existe la venta (útil para la sincronización)
+            if (reqId) {
+                const exist = await turso.execute({
+                    sql: 'SELECT id, folio, estado, created_at FROM ventas WHERE id = ? LIMIT 1',
+                    args: [reqId]
+                });
+                if (exist.rows.length > 0) {
+                    const row = exist.rows[0] as any;
+                    return res.json({ success: true, id: row.id, folio: row.folio, estado: row.estado, created_at: row.created_at, message: 'Venta ya existe' });
+                }
+            }
+
+            // Generar folio único si no se proporciona uno
+            let folio = reqFolio;
+            if (!folio) {
+                const countR = await turso.execute('SELECT COUNT(*) as cnt FROM ventas');
+                const count = Number((countR.rows[0] as any).cnt);
+                folio = `FOLIO-${String(count + 1).padStart(5, '0')}`;
+            }
+            
+            const ventaId = reqId || crypto.randomUUID();
             const now = new Date().toISOString();
             const estado = esApartado ? 'apartado' : 'completada';
             const abonado = monto_abonado ?? (esApartado ? 0 : total);
@@ -68,7 +84,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                     batch.push({
                         sql: `INSERT INTO venta_detalles (id,venta_id,producto_id,cantidad,precio_unitario,subtotal)
                               VALUES (?,?,?,?,?,?)`,
-                        args: [crypto.randomUUID(), ventaId, det.producto_id, det.cantidad, det.precio_unitario, det.subtotal]
+                        args: [det.id || crypto.randomUUID(), ventaId, det.producto_id, det.cantidad, det.precio_unitario, det.subtotal]
                     });
                     batch.push({
                         sql: `UPDATE productos SET stock = MAX(0, stock - ?) WHERE id = ?`,
